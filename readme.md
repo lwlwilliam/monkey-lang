@@ -46,6 +46,4 @@ let addTwo = fn(x) {
 };
 
 twice(addTwo, 2); // => 6
-
-
 ```
