@@ -64,7 +64,7 @@ func (i *Identifier) TokenLiteral() string {
 }
 
 type ReturnStatement struct {
-	Token token.Token // the 'return' token
+	Token       token.Token // the 'return' token
 	ReturnValue Expression
 }
 
