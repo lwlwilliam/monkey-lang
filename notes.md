@@ -64,3 +64,9 @@ type Token struct {
 `lexer`以源码作为输入，并输出可以表示源码的`tokens`。它不需要缓冲或保存`tokens`。
 
 也就是说，我们只需要用源码初始化`lexer`然后不断调用`NextToken()`获取下一个`token`即可。为了简化，可以使用字符串表示代码。
+
+`lexer`的工作不是告诉我们代码是否有意义或者是否工作以及包含错误，它的工作应该仅仅是将输入转换为`tokens`。
+
+##### REPL
+
+`Monkey`语言需要一个`REPL`。`REPL`表示"Read Eval Print Loop"。`Python`、`Ruby`以及每个`JavaScript`运行时都有`REPL`。有时候`REPL`又叫`console`或`interactive mode`。它们的概念是一样的：`REPL`读取输入，将其发送给`interpreter`进行`evaluation`，将结果/输出打印出来，然后重复以上步骤。
