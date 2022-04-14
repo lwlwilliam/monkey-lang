@@ -67,6 +67,188 @@ type Token struct {
 
 `lexer`的工作不是告诉我们代码是否有意义或者是否工作以及包含错误，它的工作应该仅仅是将输入转换为`tokens`。
 
-##### REPL
+#### REPL
 
 `Monkey`语言需要一个`REPL`。`REPL`表示"Read Eval Print Loop"。`Python`、`Ruby`以及每个`JavaScript`运行时都有`REPL`。有时候`REPL`又叫`console`或`interactive mode`。它们的概念是一样的：`REPL`读取输入，将其发送给`interpreter`进行`evaluation`，将结果/输出打印出来，然后重复以上步骤。
+
+### Parsing
+
+#### Parsers
+
+`parser`作为一个软件组件，接收输入数据（通常是文本）并构建数据结构——常常是一些解析树、抽象语法树或者其它层级结构，使用这些结构来表示输入内容并检查语法。`parser`通常会有一个前置的独立词法分析器用于从输入字符序列中创建`token`。
+
+这看起来有点抽象，以下用示例来说明。这是`JavaScript`代码：
+
+```bash
+> var input = '{"name": "Thorsten", "age": 28}';
+> var output = JSON.parse(input)
+> output
+{ name: 'Thorsten', age: 28 }
+> output.name
+'Thorsten'
+> output.age
+28
+>
+```
+
+以上的输入就是一些文本字符串。我们将其传到隐藏在`JSON.parse`函数背后的`parser`中就可以得到一个输出。输出的数据结构表示了输入：一个有两个字段`name`和`age`的JavaScript`对象。
+
+`JSON`的`parser`跟编程语言的`parser`并没有什么不同。当然，`JSON`所要解析的数据可以一眼就可以看出应该使用什么数据结构来表示，而编程语言的输入文本则要复杂得多。
+
+在大部分`interpreters`以及`compilers`中，用于表示源码的数据结构称为`syntax tree`或者`abstract syntax tree(AST)`。之所以是`abstract`，是因为源码中的细节在`AST`中会被省略。像`;`、`\n`、`\r`、` `、`(`、`)`、`{`、`}`和注释等可能不会在`AST`中表示出来。
+
+并不存在一种通用的、正确的`AST`格式。但是所有`parser`的`AST`实现都十分类似，概念也是类似的，只是细节不一样。`AST`的具体实现取决于语言本向。
+
+我们有以下`JavaScript`源码：
+
+```js
+if (3 * 5 > 10) {
+    return "hello";
+} else {
+    return "goodbye";
+}
+```
+
+假设我们有`MagicLexer`和`MagicParser`，构建出`JavaScript`对象形式的`AST`，那么在解析时可能会生成如下内容：
+
+```bash
+> var input = 'if (3 * 5 > 10) { return "hello"; } else { return "goodbye"; }';
+> var tokens = MagicLexer.parse(input);
+> MagicParser.parse(tokens);
+{
+  type: "if-statement",
+  condition: {
+    type: "operator-expression",
+    operator: ">",
+    left: {
+      type: "operator-expression",
+      operator: "*",
+      left: { type: "integer-literal", value: 3 },
+      right: { type: "integer-literal", value: 5 }
+    },
+    right: { type: "integer-literal", value: 10 }
+  },
+  consequence: {
+    type: "return-statement",
+    returnValue: { type: "string-literal", value: "hello" }
+  },
+  alternative: {
+    type: "return-statement",
+    returnValue: { type: "string-literal", value: "goodbye" }
+  }
+}
+```
+
+虽然`parser`输出的`AST`很抽象，但确实精确地表示了源码。这就是`parsers`干的活。它们以源码或作为输入（文本或者`tokens`形式），输出可以表示源码的数据结构。在构建数据结构时，会不可避免地分析输入数据，检查它们是否符合期望的结构。因此，解析的过程也叫`syntactic analysis（语法分析）`。
+
+#### Why not a parser generator?
+
+`parser`生成器是将语言的规范描述作为输入，然后生成`parser`的工具。该生成的`parser`又可以将源码作为输入来生成语法树。大部分生成器会使用`context-free grammar(CFG)`作为它们的输入。`CFG`是一套用于描述如何生成正确的（根据语法来判断）语言语句的规则。最常用的`CFG`标记格式是`Backus-Naur Form(BNF)`或者`Extended Backus-Naur Form(EBNF)`。
+
+学习写自己的`parser`并不是在浪费时间，这其实是极为可贵的。只有在写过自己的`parser`之后，或者至少尝试过，才会发现生成器的优缺点，以及了解它们解决了哪方面的问题。
+
+想要理解`parser`是如何工作的，最好的办法就是自己动手写一个，这也是十分有趣的。
+
+#### Writing a parser for the Monkey programming language
+
+解析一门编程语言有两种主要的策略：自顶向下解析和自底向上解析。`recursive descent parsing（递归下降解析）`，`Early parsing`或`predictive parsing`都是自顶向下解析的变体。
+
+#### Parser's first steps: parsing let statements
+
+```
+let <identifier> = <expression>;
+```
+
+`statements`和`expressions`的区别：`expression`会产生值，`statements`不会。如下代码：`let x = 10;`不会产生值，而`5`会；`return 5;`说一句不会产生值，而`add(5, 5)`会。
+
+```monkey
+let x = 10;
+let y = 15;
+let foobar = add(5, 5);
+
+let add = fn(a, b) {
+    return a + b;
+};
+```
+
+其实`expression`或`statement`是什么，哪个会产生值哪个不会，取决于编程语言本身。在某些语言中，函数字面量如`fn(x, y) { return x + y; }`是表达式，可以在其它任何可以使用表达式的地方使用。在某些语言中，函数字面量只能作为程序顶级函数声明语句的一部分。在某些语言中有`if expression`，其中的`conditionals`是`expressions`，会产生值。
+
+`parser`的伪代码：
+
+```
+function parseProgram() {
+    program = newProgramASTNode()
+    
+    advanceTokens()
+    
+    for (currentToken() != EOF_TOKEN) {
+        statement = null
+        
+        if (currentToken() == LET_TOKEN) {
+            statement = parseLetStatement()
+        } else if (currentToken() == RETURN_TOKEN) {
+            statement = parseReturnStatement()
+        } else if (currentToken() == IF_TOKEN) {
+            statement = parseIfStatement()
+        }
+        
+        if (statement != null {
+            program.Statments.push(statement) 
+        }
+        
+        advanceTokens()
+    }
+    
+    return program
+}
+
+function parseLetStatement() {
+    advanceTokens()
+    identifier = parseIdentifier()
+    advanceTokens()
+    
+    if currentToken() != EQUAL_TOKEN {
+        parseError("no equal sign!")
+        return null
+    }
+    
+    advanceTokens()
+    value = parseExpression()
+    variableStatement = newVariableStatementASTNode()
+    variableStatement.identifier = identifier
+    variableStatement.value = value
+    return variableStatement
+}
+
+function parseIdentifier() {
+    identifier = newIdentifierASTNode()
+    identifier.token = currentToken()
+    return identifier
+}
+
+function parseExpression() {
+    if (currentToken() == INTEGER_TOKEN) {
+        if (nextToken() == PLUS_TOKEN) {
+            return parseOperatorExpression()
+        } else if (nextToken() == SEMICOLON_TOKEN) {
+            return parseIntegerLiteral()
+        }
+    } else if (currentToken() == LEFT_PAREN) {
+        return parseGroupedExpression()
+    }
+    // [...]
+}
+
+function parseOperatorExpression() {
+    operatorExpression = newOperatorExpression()
+    operatorExpression.left = parseIntegerLiteral()
+    operatorExpression.operator = currentToken()
+    operatorExpression.right = parseExpression()
+    return operatorExpression()
+}
+
+// [...]
+```
+
+递归下降解析的基本思想就如上述伪代码。入口就是`parseProgram`，初始化`AST`的根结点(`newProgramASTNode()`)。接着就可以基于当前`token`构建子结点——`statements`了，如此递归。
+
