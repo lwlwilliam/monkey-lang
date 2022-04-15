@@ -17,3 +17,13 @@ let add = fn(a, b) {
     return a + b;
 };
 ```
+
+#### return statements
+
+格式：`return <expression>;`。
+
+```monkey
+return 5;
+return 10;
+return add(15);
+```
