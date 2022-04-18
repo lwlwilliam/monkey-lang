@@ -7,6 +7,11 @@ import (
 	"github.com/lwlwilliam/monkey-lang/token"
 )
 
+type (
+	prefixParseFn func() ast.Expression               // a prefix operator doesn't have a "left side"
+	infixParseFn  func(ast.Expression) ast.Expression // the argument ast.Expression is "left side" of the infix operator that's being parsed.
+)
+
 type Parser struct {
 	l *lexer.Lexer
 
@@ -14,6 +19,10 @@ type Parser struct {
 
 	curToken  token.Token
 	peekToken token.Token
+
+	// In order for our parser to get the correct prefixParseFn or infixParseFn for the current token type
+	prefixParseFns map[token.TokenType]prefixParseFn
+	infixParseFns  map[token.TokenType]infixParseFn
 }
 
 func New(l *lexer.Lexer) *Parser {
@@ -32,6 +41,14 @@ func New(l *lexer.Lexer) *Parser {
 func (p *Parser) nextToken() {
 	p.curToken = p.peekToken
 	p.peekToken = p.l.NextToken()
+}
+
+func (p *Parser) registerPrefix(tokenType token.TokenType, fn prefixParseFn) {
+	p.prefixParseFns[tokenType] = fn
+}
+
+func (p *Parser) registerInfix(tokenType token.TokenType, fn infixParseFn) {
+	p.infixParseFns[tokenType] = fn
 }
 
 func (p *Parser) ParseProgram() *ast.Program {
