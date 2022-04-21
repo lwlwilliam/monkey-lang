@@ -31,6 +31,12 @@ func Start(in io.Reader, out io.Writer) {
 		// demo2
 		p := parser.New(l)
 		program := p.ParseProgram()
-		fmt.Println(program)
+		if len(p.Errors()) > 0 {
+			for _, e := range p.Errors() {
+				fmt.Println(e)
+			}
+		} else {
+			fmt.Println(program)
+		}
 	}
 }
