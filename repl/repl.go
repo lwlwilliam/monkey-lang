@@ -3,6 +3,7 @@ package repl
 import (
 	"bufio"
 	"fmt"
+	"github.com/lwlwilliam/monkey-lang/evaluator"
 	"github.com/lwlwilliam/monkey-lang/lexer"
 	"github.com/lwlwilliam/monkey-lang/parser"
 	"io"
@@ -55,6 +56,17 @@ func Start(in io.Reader, out io.Writer) {
 		*/
 
 		// demo3
+		//p := parser.New(l)
+		//program := p.ParseProgram()
+		//if len(p.Errors()) != 0 {
+		//	printParserErrors(out, p.Errors())
+		//	continue
+		//}
+		//
+		//io.WriteString(out, program.String())
+		//io.WriteString(out, "\n")
+
+		// demo4
 		p := parser.New(l)
 		program := p.ParseProgram()
 		if len(p.Errors()) != 0 {
@@ -62,8 +74,11 @@ func Start(in io.Reader, out io.Writer) {
 			continue
 		}
 
-		io.WriteString(out, program.String())
-		io.WriteString(out, "\n")
+		evaluated := evaluator.Eval(program)
+		if evaluated != nil {
+			io.WriteString(out, evaluated.Inspect())
+			io.WriteString(out, "\n")
+		}
 	}
 }
 
