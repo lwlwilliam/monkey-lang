@@ -35,7 +35,7 @@ func TestLetStatements(t *testing.T) {
 		}
 
 		val := stmt.(*ast.LetStatement).Value
-		if !testLiteralExpression(t, val, tt.expectedIdentifier) {
+		if !testLiteralExpression(t, val, tt.expectedValue) {
 			return
 		}
 	}
@@ -83,7 +83,7 @@ func TestReturnStatements(t *testing.T) {
 	input := `
 return 5;
 return 10;
-return 993322 Hello world;
+return 993322;
 `
 
 	l := lexer.New(input)
